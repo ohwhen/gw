@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="gw — git worktrees, simplified">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f78166"/>
+      <stop offset="100%" stop-color="#ea4aaa"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#21262d" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="1280" height="640" fill="url(#grid)" opacity="0.4"/>
+
+  <!-- left accent stripe -->
+  <rect x="0" y="0" width="6" height="640" fill="url(#accent)"/>
+
+  <!-- wordmark -->
+  <text x="96" y="320" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="220" font-weight="700" fill="#f0f6fc" letter-spacing="-8">gw</text>
+
+  <!-- tagline -->
+  <text x="100" y="400" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="34" font-weight="500" fill="#8b949e">git worktrees, simplified</text>
+
+  <!-- prompt example -->
+  <g transform="translate(100, 470)">
+    <text x="0" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="26" fill="#7ee787">$</text>
+    <text x="28" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="26" fill="#f0f6fc">gw -b feature/login</text>
+    <text x="0" y="44" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" fill="#8b949e">→ created worktree at .worktrees/feature-login</text>
+  </g>
+
+  <!-- branch diagram on the right -->
+  <g transform="translate(760, 180)" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- main trunk -->
+    <line x1="40" y1="0" x2="40" y2="280" stroke="#30363d" stroke-width="3"/>
+
+    <!-- main commits -->
+    <circle cx="40" cy="20"  r="9" fill="#0d1117" stroke="#58a6ff" stroke-width="3"/>
+    <circle cx="40" cy="100" r="9" fill="#0d1117" stroke="#58a6ff" stroke-width="3"/>
+    <circle cx="40" cy="180" r="9" fill="#0d1117" stroke="#58a6ff" stroke-width="3"/>
+    <circle cx="40" cy="260" r="9" fill="#0d1117" stroke="#58a6ff" stroke-width="3"/>
+
+    <!-- branch 1 -->
+    <path d="M 40 100 Q 100 100 140 60 L 280 60" stroke="#f78166" stroke-width="3"/>
+    <circle cx="280" cy="60" r="9" fill="#0d1117" stroke="#f78166" stroke-width="3"/>
+    <text x="300" y="67" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" fill="#f78166">feature/login</text>
+
+    <!-- branch 2 -->
+    <path d="M 40 180 Q 100 180 140 140 L 280 140" stroke="#a371f7" stroke-width="3"/>
+    <circle cx="280" cy="140" r="9" fill="#0d1117" stroke="#a371f7" stroke-width="3"/>
+    <text x="300" y="147" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" fill="#a371f7">fix/payments</text>
+
+    <!-- branch 3 -->
+    <path d="M 40 260 Q 100 260 140 220 L 280 220" stroke="#7ee787" stroke-width="3"/>
+    <circle cx="280" cy="220" r="9" fill="#0d1117" stroke="#7ee787" stroke-width="3"/>
+    <text x="300" y="227" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" fill="#7ee787">refactor/api</text>
+
+    <!-- main branch label -->
+    <text x="0" y="20" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" fill="#58a6ff">main</text>
+  </g>
+</svg>
