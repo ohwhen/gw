@@ -1,7 +1,7 @@
 # Git worktree helpers
 #
 # gw <branch>          checkout existing branch in .worktrees/<branch>, cd in
-# gw -b <branch>       create new branch + worktree, cd in
+# gw -b <branch> [<start>]  create new branch (from <start>, default HEAD) + worktree, cd in
 # gw -d <branch>       remove worktree + delete branch (safe: refuses if dirty/unmerged)
 # gw -D <branch>       force-remove worktree + force-delete branch
 # gw -r                cd to the main worktree
@@ -17,7 +17,8 @@ gw — git worktree helper
 Usage:
   gw                    list worktrees
   gw <branch>           checkout existing branch in .worktrees/<branch>, cd in
-  gw -b <branch>        create new branch + worktree, cd in
+  gw -b <branch> [<start>]
+                        create new branch (from <start>, default HEAD) + worktree, cd in
   gw -d <branch>        remove worktree + delete branch (safe)
   gw -D <branch>        force-remove worktree + force-delete branch
   gw -r                 cd to the main worktree
@@ -70,7 +71,7 @@ gw() {
     return
   fi
 
-  local repo_root mode=add branch dir wt_path existing
+  local repo_root mode=add branch start dir wt_path existing
   repo_root=$(_gw_repo_root) || return 1
 
   case "$1" in
@@ -81,6 +82,7 @@ gw() {
   esac
 
   branch="$1"
+  start="$2"
   if [[ -z "$branch" ]]; then
     echo "usage: gw [-b|-d|-D] <branch>" >&2
     return 1
@@ -112,7 +114,7 @@ gw() {
       fi
 
       if [[ "$mode" == create ]]; then
-        git -C "$repo_root" worktree add -b "$branch" "$wt_path" || return
+        git -C "$repo_root" worktree add -b "$branch" "$wt_path" ${start:+"$start"} || return
       else
         git -C "$repo_root" worktree add "$wt_path" "$branch" || return
       fi
@@ -163,6 +165,12 @@ _gw() {
           _describe -t branches 'existing branch (for reference)' all_branches
           ;;
       esac
+      ;;
+    4)
+      if [[ $words[2] == -b ]]; then
+        all_branches=(${(f)"$(git for-each-ref --format='%(refname:short)' refs/heads/ refs/remotes/ 2>/dev/null)"})
+        _describe -t branches 'start point' all_branches
+      fi
       ;;
   esac
 }
