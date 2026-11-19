@@ -37,6 +37,13 @@ _gw_repo_root() {
   (cd "$common_dir/.." && pwd)
 }
 
+_gw_path_for_branch() {
+  git worktree list --porcelain 2>/dev/null | awk -v want="branch refs/heads/$1" '
+    /^worktree / { path = substr($0, 10) }
+    $0 == want   { print path; exit }
+  '
+}
+
 _gw_ensure_worktrees_dir() {
   local repo_root="$1"
   local exclude_file="$repo_root/.git/info/exclude"
@@ -63,7 +70,7 @@ gw() {
     return
   fi
 
-  local repo_root mode=add branch dir wt_path
+  local repo_root mode=add branch dir wt_path existing
   repo_root=$(_gw_repo_root) || return 1
 
   case "$1" in
@@ -81,6 +88,9 @@ gw() {
 
   dir="${branch//\//-}"
   wt_path="$repo_root/.worktrees/$dir"
+
+  existing=$(_gw_path_for_branch "$branch")
+  [[ -n "$existing" ]] && wt_path="$existing"
 
   case "$mode" in
     delete)
