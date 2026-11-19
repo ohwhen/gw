@@ -20,14 +20,24 @@ description: Use the gw helper (a zsh function shipped at ~/.claude/skills/gw/gw
 ```bash
 gw                       # list all worktrees in this repo
 gw <branch>              # check out existing branch in .worktrees/<branch>, cd in
-gw -b <branch>           # create new branch + worktree, cd in
+gw -b <branch> [<start>] # create new branch (from <start>, default HEAD) + worktree, cd in
 gw -d <branch>           # remove worktree + delete branch (safe; refuses if dirty/unmerged)
 gw -D <branch>           # force-remove worktree + force-delete branch
 gw -r                    # cd back to the main worktree
+gw --no-cow -b <branch>  # create without cloning gitignored files
 gw -h                    # show help
 ```
 
 Slashes in branch names are sanitized into the directory: `owen/foo` → `.worktrees/owen-foo`.
+
+## Copy-on-write clones of ignored files
+
+When `gw` creates a worktree, it clones the main worktree's gitignored files (`node_modules`, `.env`, build output) into it with copy-on-write: APFS on macOS; btrfs, XFS, bcachefs or ZFS on Linux. The worktree is ready to build immediately and costs no extra disk. On other filesystems it prints `gw: no copy-on-write support ...` and leaves a plain worktree; don't byte-copy large dirs yourself to compensate.
+
+- Tracked files come from git, and untracked-but-not-ignored files are never copied.
+- Virtualenvs and CMake build dirs are skipped (absolute paths); recreate them in the worktree.
+- A committed `.worktreeinclude` (gitignore syntax) limits cloning to the ignored paths it matches.
+- `--no-cow` or `git config gw.cow false` turns it off.
 
 ## How to invoke from an agent shell
 
@@ -64,5 +74,5 @@ git branch -d owen/feature
 - `gw -d` from inside the target worktree is safe — it `cd`s to the main worktree first. Raw `git worktree remove` does not, so you'd be left in a deleted directory.
 - `gw -D` (and `git worktree remove --force`) discard uncommitted changes silently.
 - Do not put worktrees inside a path Git already tracks; gitignore cannot override an already-tracked file. `.worktrees/` at the repo root is safe.
-- Each worktree gets its own untracked files (`node_modules`, `.env`, build outputs). The `.git` database, branches, and stashes are shared.
+- Each worktree gets its own untracked files (`node_modules`, `.env`, build outputs). `gw` seeds them with copy-on-write clones from the main worktree where the filesystem supports it; after that they diverge independently. The `.git` database, branches, and stashes are shared.
 - Run `git worktree prune` if a worktree directory was deleted by hand (`rm -rf`) instead of via `gw -d` / `git worktree remove`.
