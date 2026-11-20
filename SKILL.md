@@ -32,7 +32,7 @@ Slashes in branch names are sanitized into the directory: `owen/foo` → `.workt
 
 ## Copy-on-write clones of ignored files
 
-When `gw` creates a worktree, it clones the main worktree's gitignored files (`node_modules`, `.env`, build output) into it with copy-on-write: APFS on macOS; btrfs, XFS, bcachefs or ZFS on Linux. The worktree is ready to build immediately and costs no extra disk. On other filesystems it prints `gw: no copy-on-write support ...` and leaves a plain worktree; don't byte-copy large dirs yourself to compensate.
+When `gw` creates a worktree, it clones the main worktree's gitignored files (`node_modules`, `.env`, build output) into it with copy-on-write: APFS on macOS; btrfs, XFS, bcachefs or ZFS on Linux. The worktree is ready to build as soon as `gw` returns and uses almost no extra disk. Cloning is per file, so in a large monorepo `gw` can take a few minutes; let it finish rather than interrupting it. On other filesystems it prints `gw: no copy-on-write support ...` and leaves a plain worktree; don't byte-copy large dirs yourself to compensate.
 
 - Tracked files come from git, and untracked-but-not-ignored files are never copied.
 - Virtualenvs and CMake build dirs are skipped (absolute paths); recreate them in the worktree.
