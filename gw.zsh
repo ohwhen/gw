@@ -312,4 +312,6 @@ _gw() {
   esac
 }
 
-(( $+functions[compdef] )) && compdef _gw gw
+if (( $+functions[compdef] )); then
+  compdef _gw gw
+fi
