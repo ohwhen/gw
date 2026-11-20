@@ -32,8 +32,8 @@ Worktrees live at <repo>/.worktrees/<sanitized-branch-name>.
 On first use, .worktrees/ is added to .git/info/exclude and created.
 
 New worktrees get copy-on-write clones of the main worktree's gitignored
-files (node_modules, .env, build output): instant, no extra disk. Needs APFS
-on macOS, or btrfs, XFS, bcachefs or ZFS on Linux; skipped elsewhere.
+files (node_modules, .env, build output), using almost no extra disk.
+Needs APFS on macOS, or btrfs, XFS, bcachefs or ZFS on Linux; skipped elsewhere.
   - .worktreeinclude (gitignore syntax) limits it to the ignored paths it matches
   - virtualenvs and CMake build dirs are skipped unless .worktreeinclude lists them
   - `git config gw.cow false` turns it off (per repo, or --global)

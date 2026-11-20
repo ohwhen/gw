@@ -14,9 +14,38 @@
 
 ---
 
+`gw -b feature` creates a branch in its own worktree, clones your `node_modules`, `.env` and build output into it, and `cd`s you in. The clones are [copy-on-write](#copy-on-write-worktrees): they share disk blocks with the originals, so a worktree full of dependencies costs almost no disk.
+
+Measured on a production pnpm monorepo with 64,000 tracked files:
+
+| New worktree | Files in it (`du`) | Disk it actually used (`df`) |
+|---|---|---|
+| `git worktree add` | 0.7 GB: source only, no dependencies or build output | 0.7 GB |
+| `gw -b` | 22.7 GB: source, `node_modules`, `.env`, build output | **2.0 GB** |
+
+The 2.0 GB is the 0.7 GB checkout plus the repo's own post-checkout hook output and clone bookkeeping. Copying those ignored files the ordinary way would cost the full 22 GB again for every worktree you open.
+
+## Quick start
+
+```bash
+git clone https://github.com/ohwhen/gw.git ~/.claude/skills/gw
+grep -qxF 'source ~/.claude/skills/gw/gw.zsh' ~/.zshrc || echo 'source ~/.claude/skills/gw/gw.zsh' >> ~/.zshrc
+exec zsh
+```
+
+Then, inside any git repo:
+
+```bash
+gw -b feature-x   # new branch + worktree, dependencies cloned in, cd in
+gw main           # hop to another branch's worktree
+gw -d feature-x   # remove the worktree and delete the branch
+```
+
+Cloning into `~/.claude/skills/gw/` also installs the [Claude Code skill](#claude-code-skill). If you don't use Claude Code, clone anywhere and source `gw.zsh` from there. To update later, run `git -C ~/.claude/skills/gw pull` and open a new shell.
+
 ## Why
 
-Worktrees let you check out multiple branches at once — perfect for hopping between a feature, a hotfix review, and an agent's branch without stashing or cloning. The native CLI is just a bit clunky for everyday use:
+Worktrees let you check out multiple branches at once: a feature, a hotfix review, and an agent's branch side by side, without stashing or cloning. The native CLI is clunky for everyday use:
 
 ```bash
 git worktree add ../somewhere-else feature-x
@@ -27,62 +56,25 @@ git worktree remove ../somewhere-else
 git branch -d feature-x
 ```
 
-`gw` collapses that to:
+And the new worktree has no `node_modules`, no `.env`, and no build cache, so you reinstall and rebuild before you can run anything. `gw` fixes both: one short command, worktrees in a predictable place (`<repo>/.worktrees/<branch>`, gitignored locally), and dependencies already there.
+
+## Parallel AI agents
+
+Coding agents work best in their own checkout, so they can edit, install and run tests without touching yours or each other's. That usually means one full copy of your dependencies per agent. With `gw`, each agent's worktree gets its own `node_modules` and build output for a fraction of the disk:
 
 ```bash
-gw -b feature-x   # create + cd in
-gw -d feature-x   # remove + delete branch
+gw -b agent/auth-refactor
+gw -b agent/payments-tests
+gw -b agent/docs-pass
 ```
 
-All worktrees live under `<repo>/.worktrees/<branch>`, gitignored locally. You spend less time managing paths and more time writing code.
+Each clone is independent. When an agent runs `pnpm install` or rebuilds, only the files it rewrites take new disk space, and the main worktree's copy is never touched. A symlinked `node_modules` can't give you that; every worktree would share one install.
 
-New worktrees also come ready to run. `gw` clones your gitignored files (`node_modules`, `.env`, build output) into them as [copy-on-write](#copy-on-write-worktrees) clones, so there's nothing to reinstall or rebuild, and no extra disk used.
-
-## Install
-
-Clone once into `~/.claude/skills/gw/` and you get both the zsh helper and the [Claude Code skill](#claude-code-skill) in one go:
-
-```bash
-git clone https://github.com/ohwhen/gw.git ~/.claude/skills/gw
-echo 'source ~/.claude/skills/gw/gw.zsh' >> ~/.zshrc
-source ~/.zshrc
-```
-
-If you don't use Claude Code, clone anywhere and source `gw.zsh` from there — only the path changes.
-
-### Updating
-
-```bash
-cd ~/.claude/skills/gw && git pull
-```
-
-Then `source ~/.zshrc` (or open a new shell) to load the new version.
-
-## Usage
-
-| Command | What it does |
-|---|---|
-| `gw` | List all worktrees |
-| `gw <branch>` | Check out an existing branch in a worktree, `cd` into it |
-| `gw -b <branch> [<start>]` | Create a new branch (from `<start>`, default `HEAD`) + worktree, `cd` into it |
-| `gw -d <branch>` | Remove worktree and delete branch (refuses if dirty or unmerged) |
-| `gw -D <branch>` | Force-remove worktree and force-delete branch |
-| `gw -r` | `cd` to the main worktree from anywhere in the repo |
-| `gw --no-cow ...` | Create the worktree without cloning gitignored files |
-| `gw -h`, `--help` | Show help |
-
-Slashes in branch names get sanitized into the directory: `owen/foo` → `.worktrees/owen-foo`.
-
-## How it works
-
-- On first use in a repo, `gw` adds `.worktrees/` to `.git/info/exclude` (local-only — no committed change to the repo) and creates the directory.
-- `gw <branch>` is idempotent. If the worktree already exists, it just `cd`s in.
-- `-d` mirrors `git branch -d` semantics: refuses to delete unmerged branches or dirty worktrees. `-D` is the force variant.
-- All operations run against the main repo via `git -C`, so it works correctly from inside any linked worktree too.
+This repo is also a [Claude Code skill](#claude-code-skill) that teaches agents to reach for `gw` instead of stashing.
 
 ## Copy-on-write worktrees
 
-A fresh worktree normally has no `node_modules`, `.env`, or build output, so you reinstall and rebuild from cold. When `gw` creates a worktree, it also clones the main worktree's gitignored files into it as copy-on-write clones. Clones share disk blocks with the originals until one side writes, so a multi-GB `node_modules` appears in milliseconds and takes no extra space.
+When `gw` creates a worktree, it clones the main worktree's gitignored files into it. Clones share disk blocks with the originals until one side writes, so you only pay for what changes.
 
 | Platform | Filesystems |
 |---|---|
@@ -109,9 +101,37 @@ node_modules/
 
 To turn cloning off, pass `--no-cow` for one worktree, or run `git config gw.cow false` (add `--global` for every repo).
 
+Cloning is file by file, so it takes longer the more files there are. A fresh Next.js app's `node_modules` (475 MB, 21,500 files) clones in about 3.5 seconds; the 22.7 GB monorepo above takes four to five minutes. Disk use stays low either way. If that's too slow for a repo, a `.worktreeinclude` listing only what you need (often `node_modules/` and `.env`) cuts it down.
+
 Cloning carries `.env` and other local secrets into each worktree. They stay on the same disk, just as if you'd copied them by hand; list only what you want in `.worktreeinclude` if that matters.
 
-## Tab completion
+## Usage
+
+| Command | What it does |
+|---|---|
+| `gw` | List all worktrees |
+| `gw <branch>` | Check out an existing branch in a worktree, `cd` into it |
+| `gw -b <branch> [<start>]` | Create a new branch (from `<start>`, default `HEAD`) + worktree, `cd` into it |
+| `gw -d <branch>` | Remove worktree and delete branch (refuses if dirty or unmerged) |
+| `gw -D <branch>` | Force-remove worktree and force-delete branch |
+| `gw -r` | `cd` to the main worktree from anywhere in the repo |
+| `gw --no-cow ...` | Create the worktree without cloning gitignored files |
+| `gw -h`, `--help` | Show help |
+
+Slashes in branch names get sanitized into the directory: `owen/foo` → `.worktrees/owen-foo`.
+
+<details>
+<summary><strong>How it works</strong></summary>
+
+- On first use in a repo, `gw` adds `.worktrees/` to `.git/info/exclude` (local-only — no committed change to the repo) and creates the directory.
+- `gw <branch>` is idempotent. If the worktree already exists, it just `cd`s in.
+- `-d` mirrors `git branch -d` semantics: refuses to delete unmerged branches or dirty worktrees. `-D` is the force variant.
+- All operations run against the main repo via `git -C`, so it works correctly from inside any linked worktree too.
+
+</details>
+
+<details>
+<summary><strong>Tab completion</strong></summary>
 
 Tab completion is included and is context-aware:
 
@@ -121,7 +141,10 @@ Tab completion is included and is context-aware:
 
 Requires `compinit` to be active (it is by default in oh-my-zsh, prezto, and most modern setups).
 
-## Example session
+</details>
+
+<details>
+<summary><strong>Example session</strong></summary>
 
 A typical day: you're working on a feature, a teammate's PR review comes in, then you go back and finish.
 
@@ -198,6 +221,22 @@ $ gw
 
 Back to a clean slate. No `cd`s memorized, no orphaned branches.
 
+</details>
+
+## FAQ
+
+**Why not just symlink `node_modules` into each worktree?**
+Every worktree would then share one install. Two branches with different lockfiles, or two agents installing at once, overwrite each other. Clones start identical but are fully independent.
+
+**Does `gw` copy my `.env`?**
+Yes, along with every other gitignored file. Commit a `.worktreeinclude` to choose exactly which ignored files come along, or turn cloning off with `git config gw.cow false`.
+
+**I'm on ext4. What happens?**
+ext4 can't make copy-on-write clones, so `gw` prints a warning and creates a plain worktree. It never falls back to a full byte copy. btrfs, XFS, bcachefs and ZFS 2.2+ all work.
+
+**Does it work in bash?**
+`gw` is a zsh function. From bash, scripts or agents, call it through zsh: `zsh -c 'source ~/.claude/skills/gw/gw.zsh && gw -b feature-x'`.
+
 ## Requirements
 
 - zsh
@@ -206,7 +245,7 @@ Back to a clean slate. No `cd`s memorized, no orphaned branches.
 
 ## Claude Code skill
 
-This repo doubles as a [Claude Code skill](https://docs.claude.com/en/docs/claude-code/skills) — see [`SKILL.md`](SKILL.md). When you clone into `~/.claude/skills/gw/` (the [Install](#install) step above), Claude Code automatically picks up the skill. It teaches an agent the `.worktrees/` isolation pattern — when to use a worktree instead of stashing, the path conventions, and the raw `git worktree` commands to use in non-interactive contexts.
+This repo doubles as a [Claude Code skill](https://docs.claude.com/en/docs/claude-code/skills) — see [`SKILL.md`](SKILL.md). When you clone into `~/.claude/skills/gw/` (the [Quick start](#quick-start) step above), Claude Code automatically picks up the skill. It teaches an agent the `.worktrees/` isolation pattern — when to use a worktree instead of stashing, the path conventions, and the raw `git worktree` commands to use in non-interactive contexts.
 
 ## License
 
