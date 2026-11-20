@@ -8,7 +8,7 @@
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"/></a>
     <img src="https://img.shields.io/badge/shell-zsh-89e051?logo=gnu-bash&logoColor=white" alt="zsh"/>
-    <img src="https://img.shields.io/badge/git-2.5%2B-f05032?logo=git&logoColor=white" alt="git 2.5+"/>
+    <img src="https://img.shields.io/badge/git-2.31%2B-f05032?logo=git&logoColor=white" alt="git 2.31+"/>
   </p>
 </div>
 
@@ -198,7 +198,7 @@ Back to a clean slate. No `cd`s memorized, no orphaned branches.
 ## Requirements
 
 - zsh
-- git 2.5 or newer
+- git 2.31 or newer
 - For copy-on-write clones: macOS on APFS, or Linux with GNU coreutils on btrfs, XFS, bcachefs or ZFS 2.2+
 
 ## Claude Code skill
