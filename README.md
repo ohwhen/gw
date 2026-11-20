@@ -2,7 +2,7 @@
   <img src="assets/banner.png" alt="gw — git worktrees, simplified" width="100%"/>
 
   <p>
-    <em>A tiny zsh helper that makes <a href="https://git-scm.com/docs/git-worktree">git worktrees</a> feel like switching tabs.</em>
+    <em>A tiny zsh helper that makes <a href="https://git-scm.com/docs/git-worktree">git worktrees</a> feel like switching tabs, with your dependencies already in place.</em>
   </p>
 
   <p>
@@ -35,6 +35,8 @@ gw -d feature-x   # remove + delete branch
 ```
 
 All worktrees live under `<repo>/.worktrees/<branch>`, gitignored locally. You spend less time managing paths and more time writing code.
+
+New worktrees also come ready to run. `gw` clones your gitignored files (`node_modules`, `.env`, build output) into them as [copy-on-write](#copy-on-write-worktrees) clones, so there's nothing to reinstall or rebuild, and no extra disk used.
 
 ## Install
 
@@ -132,12 +134,13 @@ $ gw -b owen/login-redesign
 added .worktrees/ to /Users/me/code/myproject/.git/info/exclude
 Preparing worktree (new branch 'owen/login-redesign')
 HEAD is now at a1b2c3d main: bump version
+gw: cloned ignored files from /Users/me/code/myproject (copy-on-write)
 
 $ pwd
 /Users/me/code/myproject/.worktrees/owen-login-redesign
 ```
 
-You're already in the new worktree. First time in this repo, `gw` set up `.worktrees/` in your local exclude.
+You're already in the new worktree, with `node_modules` and `.env` already there. First time in this repo, `gw` set up `.worktrees/` in your local exclude.
 
 **2. Teammate pings you for a PR review. You don't want to lose your in-progress edits — just spin up another worktree.**
 
