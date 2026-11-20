@@ -8,7 +8,7 @@
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"/></a>
     <img src="https://img.shields.io/badge/shell-zsh-89e051?logo=gnu-bash&logoColor=white" alt="zsh"/>
-    <img src="https://img.shields.io/badge/git-2.5%2B-f05032?logo=git&logoColor=white" alt="git 2.5+"/>
+    <img src="https://img.shields.io/badge/git-2.31%2B-f05032?logo=git&logoColor=white" alt="git 2.31+"/>
   </p>
 </div>
 
@@ -62,10 +62,11 @@ Then `source ~/.zshrc` (or open a new shell) to load the new version.
 |---|---|
 | `gw` | List all worktrees |
 | `gw <branch>` | Check out an existing branch in a worktree, `cd` into it |
-| `gw -b <branch>` | Create a new branch + worktree, `cd` into it |
+| `gw -b <branch> [<start>]` | Create a new branch (from `<start>`, default `HEAD`) + worktree, `cd` into it |
 | `gw -d <branch>` | Remove worktree and delete branch (refuses if dirty or unmerged) |
 | `gw -D <branch>` | Force-remove worktree and force-delete branch |
 | `gw -r` | `cd` to the main worktree from anywhere in the repo |
+| `gw --no-cow ...` | Create the worktree without cloning gitignored files |
 | `gw -h`, `--help` | Show help |
 
 Slashes in branch names get sanitized into the directory: `owen/foo` → `.worktrees/owen-foo`.
@@ -76,6 +77,37 @@ Slashes in branch names get sanitized into the directory: `owen/foo` → `.workt
 - `gw <branch>` is idempotent. If the worktree already exists, it just `cd`s in.
 - `-d` mirrors `git branch -d` semantics: refuses to delete unmerged branches or dirty worktrees. `-D` is the force variant.
 - All operations run against the main repo via `git -C`, so it works correctly from inside any linked worktree too.
+
+## Copy-on-write worktrees
+
+A fresh worktree normally has no `node_modules`, `.env`, or build output, so you reinstall and rebuild from cold. When `gw` creates a worktree, it also clones the main worktree's gitignored files into it as copy-on-write clones. Clones share disk blocks with the originals until one side writes, so a multi-GB `node_modules` appears in milliseconds and takes no extra space.
+
+| Platform | Filesystems |
+|---|---|
+| macOS | APFS (`cp -c`) |
+| Linux | btrfs, XFS (`reflink=1`), bcachefs, ZFS 2.2+ (`cp --reflink=always`) |
+
+On any other filesystem (ext4, tmpfs, HFS+, exFAT), `gw` skips the copy with a warning and gives you a plain worktree. Byte-copying gigabytes of build cache is exactly what this avoids.
+
+What gets cloned:
+
+- **Tracked files**: never. They come from a normal `git worktree add`, so the worktree matches the branch exactly.
+- **Untracked files that aren't ignored**: never, so your in-progress scratch files stay put.
+- **Gitignored files**: yes, from the main worktree, with modification times preserved so build tools don't rebuild them.
+- **Never**: other VCS metadata (`.hg`, `.jj`, `.svn`, ...), other tools' worktree dirs (`.worktrees`, `.claude/worktrees`, `.conductor`, `.entire`), and nested git repos.
+- **Not by default**: Python virtualenvs (`pyvenv.cfg`) and CMake build dirs (`CMakeCache.txt`). Both embed absolute paths, so a clone would keep running from or building into the main worktree.
+
+To clone only some ignored paths, commit a `.worktreeinclude` file in gitignore syntax, the same file [worktrunk](https://worktrunk.dev/step/) and [Claude Code](https://code.claude.com/docs/en/worktrees) read. When it exists, only ignored paths that also match it are cloned, and it can opt virtualenvs back in:
+
+```gitignore
+# .worktreeinclude
+node_modules/
+.env
+```
+
+To turn cloning off, pass `--no-cow` for one worktree, or run `git config gw.cow false` (add `--global` for every repo).
+
+Cloning carries `.env` and other local secrets into each worktree. They stay on the same disk, just as if you'd copied them by hand; list only what you want in `.worktreeinclude` if that matters.
 
 ## Tab completion
 
@@ -166,7 +198,8 @@ Back to a clean slate. No `cd`s memorized, no orphaned branches.
 ## Requirements
 
 - zsh
-- git 2.5 or newer
+- git 2.31 or newer
+- For copy-on-write clones: macOS on APFS, or Linux with GNU coreutils on btrfs, XFS, bcachefs or ZFS 2.2+
 
 ## Claude Code skill
 
